@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caixa · pré-visualização</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --ink:#14181d; --muted:#5c6670; --line:#e3e7e5; --surface:#fff;
+    --bg:#eef3f6; --accent:#1B92C6; --accent-d:#1576a0; --accent-soft:#e3f3fb;
+    --warn:#b45309; --warn-soft:#f9eddb; --ok:#1B92C6; --danger:#b42318;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --ui:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif; --nav-h:64px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:var(--ui);cursor:pointer}
+  input,select{font-family:var(--ui);font-size:16px}
+  .hidden{display:none!important}
+  .logo-sm{height:26px;width:auto;margin-bottom:4px}
+  .app{max-width:720px;margin:0 auto;padding:18px 16px calc(var(--nav-h) + 28px)}
+  .demo{max-width:720px;margin:0 auto;padding:8px 16px 0}
+  .demo .tag{display:inline-block;background:var(--warn-soft);color:var(--warn);border:1px solid #e6cf9f;border-radius:99px;font-size:11px;font-weight:600;padding:3px 11px}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .top h1{font-size:19px;margin:0}
+  .logout{background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}
+  .card.total{background:#f4fafd;border-color:#bcdef0}
+  .card h2{font-size:13px;font-weight:600;margin:0 0 12px}
+  .clinic-name{font-size:15px;font-weight:600}
+  .clinic-sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .chips{display:flex;gap:12px;flex-wrap:wrap}
+  .chip{flex:1;min-width:130px;border-radius:11px;padding:13px 14px}
+  .chip.cash{background:var(--accent-soft);border:1px solid #bcdef0}
+  .chip.warn{background:var(--warn-soft);border:1px solid #e6cf9f}
+  .chip.plain{background:#f3f6f8;border:1px solid var(--line)}
+  .chip .k{font-size:11px;font-weight:600}
+  .chip.cash .k{color:var(--ok)} .chip.warn .k{color:var(--warn)} .chip.plain .k{color:var(--muted)}
+  .chip .big{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:21px;font-weight:600;margin-top:2px}
+  .chip.cash .big{color:var(--ok)} .chip.warn .big{color:var(--warn)}
+  .chip .note{font-size:11px;color:var(--muted);margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  th{text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:600;padding-bottom:7px}
+  th:first-child{text-align:left}
+  td{padding:6px 0;border-top:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+  td:first-child{font-family:var(--ui);text-align:left}
+  tr.tot td{font-weight:600;border-top:2px solid var(--line)}
+  .st{font-family:var(--ui);font-size:11px;padding:1px 8px;border-radius:99px}
+  .st.pend{background:var(--warn-soft);color:var(--warn)} .st.ok{background:var(--accent-soft);color:var(--ok)}
+  .drop{border:1.5px dashed var(--line);border-radius:11px;padding:18px;text-align:center;color:var(--muted);font-size:13px;display:block}
+  .drop.hot{border-color:var(--accent);background:var(--accent-soft);color:var(--ink)}
+  .drop strong{color:var(--accent)}
+  input[type=file]{display:none}
+  .preview{margin-top:12px;font-size:13px}
+  .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:600;width:100%;margin-top:14px}
+  .btn.sec{background:var(--accent-soft);color:var(--accent)}
+  .btn:active{background:var(--accent-d)}
+  .row{display:flex;gap:10px;margin-top:10px}.row>*{flex:1}
+  label.fld{font-size:12px;color:var(--muted);display:block;margin:10px 0 5px}
+  .fld-in{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:10px}
+  .pills{display:flex;gap:6px;background:#e8eef2;border-radius:11px;padding:4px}
+  .pills button{flex:1;border:none;background:none;border-radius:8px;padding:8px 4px;font-size:12px;font-weight:600;color:var(--muted)}
+  .pills button.on{background:#fff;color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-h) + 16px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:99px;font-size:13px;z-index:50;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;height:var(--nav-h);background:var(--surface);border-top:1px solid var(--line);display:flex}
+  nav.tabs button{flex:1;background:none;border:none;color:var(--muted);font-size:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding-top:8px}
+  nav.tabs button.on{color:var(--accent)}
+  nav.tabs .ic{width:22px;height:22px}
+</style>
+</head>
+<body>
+
+<div class="demo"><span class="tag">PRÉ-VISUALIZAÇÃO · dados de exemplo</span></div>
+
+<div class="app">
+  <div class="top">
+    <div>
+      <svg class="logo-sm" viewBox="0 0 250 64" xmlns="http://www.w3.org/2000/svg" aria-label="Dentalsaúde">
+        <path d="M14 34 C30 14 70 14 92 30 C112 44 150 44 168 26" fill="none" stroke="#40B4E5" stroke-width="6.5" stroke-linecap="round"/>
+        <text x="12" y="56" font-family="-apple-system,system-ui,sans-serif" font-size="32" font-weight="800" letter-spacing="-1"><tspan fill="#545759">dental</tspan><tspan fill="#1B92C6">saúde</tspan></text>
+      </svg>
+      <h1 id="viewTitle">Médicos</h1>
+    </div>
+    <button class="logout">Sair</button>
+  </div>
+  <div id="viewResumo" class="hidden"></div>
+  <div id="viewImportar" class="hidden"></div>
+  <div id="viewLancar" class="hidden"></div>
+  <div id="viewRelatorios" class="hidden"></div>
+  <div id="viewMedicos"></div>
+</div>
+
+<nav class="tabs" id="nav">
+  <button data-v="Resumo" onclick="go('Resumo')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h8V3H3zM13 21h8V3h-8zM3 21h8v-6H3z"/></svg>Resumo</button>
+  <button data-v="Importar" onclick="go('Importar')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 18v2h16v-2"/></svg>Importar</button>
+  <button data-v="Lançar" onclick="go('Lançar')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Lançar</button>
+  <button data-v="Relatórios" onclick="go('Relatórios')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 4-6"/></svg>Relatórios</button>
+  <button data-v="Médicos" class="on" onclick="go('Médicos')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>Médicos</button>
+</nav>
+<div id="toast" class="toast"></div>
+
+<script>
+const V='3.11.174';
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc=`https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${V}/pdf.worker.min.js`;
+const $=id=>document.getElementById(id);
+const fmt=n=>(n==null?'—':Number(n).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €');
+const todayISO=()=>new Date().toISOString().slice(0,10);
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2200);}
+
+const clinics=[{id:'p',nome:'Paredes'},{id:'pl',nome:'Póvoa de Lanhoso'}];
+const MOCK={p:{recNum:250,porFat:0},pl:{recNum:5255,porFat:4940}};
+const DEPOSITOS=5000;
+
+function go(v){
+  $('viewTitle').textContent=v;
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  ['Resumo','Importar','Lançar','Relatórios','Médicos'].forEach(x=>$('view'+x.normalize('NFD').replace(/[\u0300-\u036f]/g,'')).classList.toggle('hidden',x!==v));
+  if(v==='Resumo')renderResumo();
+  if(v==='Importar')renderImportar();
+  if(v==='Lançar')renderLancar();
+  if(v==='Relatórios')renderRelatorios();
+  if(v==='Médicos')renderMedicos();
+}
+
+function renderResumo(){
+  let html='';
+  for(const c of clinics){
+    const a=MOCK[c.id];
+    html+=`<div class="card">
+      <div class="clinic-name">${c.nome}</div>
+      <div class="clinic-sub">saldos acumulados</div>
+      <div class="chips">
+        <div class="chip plain"><div class="k">Numerário recebido</div><div class="big">${fmt(a.recNum)}</div><div class="note">acumulado</div></div>
+        <div class="chip warn"><div class="k">Numerário por faturar</div><div class="big">${fmt(a.porFat)}</div><div class="note">recebido − liquidado</div></div>
+      </div></div>`;
+  }
+  const recTot=clinics.reduce((s,c)=>s+MOCK[c.id].recNum,0);
+  const porFatTot=clinics.reduce((s,c)=>s+MOCK[c.id].porFat,0);
+  const caixa=recTot-DEPOSITOS;
+  html+=`<div class="card total">
+    <div class="clinic-name">As duas clínicas</div>
+    <div class="clinic-sub">caixa física do grupo</div>
+    <div class="chips">
+      <div class="chip cash"><div class="k">Caixa física</div><div class="big">${fmt(caixa)}</div><div class="note">recebido ${fmt(recTot)} − depósitos ${fmt(DEPOSITOS)}</div></div>
+      <div class="chip warn"><div class="k">Total por faturar</div><div class="big">${fmt(porFatTot)}</div><div class="note">soma das duas clínicas</div></div>
+    </div></div>`;
+  $('viewResumo').innerHTML=html;
+}
+
+/* parsers reais (funcionam se largares um PDF) */
+const MONEY=/\d{1,3}(?:\.\d{3})*,\d{2}/;
+const val=s=>parseFloat(s.replace(/\./g,'').replace(',','.'));
+const METODO={'Numerário':'numerario','Cartão de débito':'mb','Multibanco':'mb','Transferência bancária':'tb','Cheque':'cheque'};
+function clinicKey(s){return /[Pp][óo]voa/.test(s)?'Póvoa de Lanhoso':(/Paredes/.test(s)?'Paredes':s);}
+function decodeSerie(s){return /PL/.test(s)?'Póvoa de Lanhoso':(/^2026$/.test(s)?'Externo':'Paredes');}
+async function getRows(file){
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise; const rows=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const tc=await (await pdf.getPage(p)).getTextContent();
+    const items=tc.items.map(it=>({x:it.transform[4],y:it.transform[5],s:it.str})).filter(it=>it.s.trim()!=='');
+    const b=[];for(const it of items){let g=b.find(k=>Math.abs(k.y-it.y)<=3);if(!g){g={y:it.y,items:[]};b.push(g);}g.items.push(it);}
+    b.sort((a,b)=>b.y-a.y);for(const g of b){g.items.sort((a,b)=>a.x-b.x);rows.push({x0:g.items[0].x,text:g.items.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim()});}
+  } return rows;
+}
+function parseFolha(rows){
+  const sec=['Numerário','Cheque','Multibanco','Dívida'];
+  const map={'Numerário':'numerario','Cheque':'cheque','Multibanco':'mb','Outros':'outros','Em Dívida':'divida','TOTAL':'total'};
+  const o={clinica:null,data:null,totais:{}};let cur=null;
+  for(const r of rows){const t=r.text;let m;
+    if(m=t.match(/Data:\s*(\d{2}-\d{2}-\d{4})/))o.data=m[1];
+    if(t.startsWith('Dentalsaúde -'))o.clinica=clinicKey(t);
+    if(sec.includes(t)&&r.x0<60){cur=t;continue;}
+    const rm=t.match(/^(Numerário|Cheque|Multibanco|Outros|Em Dívida|TOTAL):\s*(.*)$/);
+    if(rm){const v=(rm[2].match(MONEY)||[])[0];if(v){o.totais[map[rm[1]]]=val(v);}}
+  } return o;
+}
+function parseLiq(rows){
+  const re=/(\d{2}\/\d{2}\/\d{4})\s+RC\s+\S+\s+(FR|NC|FT|RC)\s+([A-Za-z]+\d{4})\/(\d+)\s+(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{1,3}(?:\.\d{3})*,\d{2})/;
+  const out=[];for(const r of rows){const m=r.text.match(re);if(!m)continue;
+    const serie=m[3];const sinal=(m[2]==='NC')?-1:1;const meio=METODO[m[5].trim()]||'outros';
+    out.push({clinica:decodeSerie(serie),meio,valor:val(m[7])*sinal});
+  } return out;
+}
+
+function renderImportar(){
+  $('viewImportar').innerHTML=`
+    <div class="card">
+      <h2>Folha de caixa</h2>
+      <label class="drop" id="dF"><input type="file" id="iF" accept="application/pdf">Largar PDF ou <strong>escolher</strong></label>
+      <div class="preview" id="pF"><span style="color:var(--muted);font-size:12px">Não precisas identificar nada — a clínica é lida do cabeçalho. Exemplo:</span>
+        <b>Póvoa de Lanhoso</b> · 09-06-2026
+        <table><tr><td>Numerário</td><td>5.255,00 €</td></tr><tr><td>Multibanco</td><td>620,00 €</td></tr>
+        <tr><td>Cheque</td><td>0,00 €</td></tr><tr class="tot"><td>Total</td><td>5.875,00 €</td></tr></table>
+        <button class="btn" onclick="toast('Folha gravada ✓ (pré-visualização)')">Gravar folha</button></div>
+    </div>
+    <div class="card">
+      <h2>Mapa de liquidações</h2>
+      <label class="drop" id="dL"><input type="file" id="iL" accept="application/pdf">Largar PDF ou <strong>escolher</strong></label>
+      <div class="preview" id="pL"><span style="color:var(--muted);font-size:12px">Roteado por série, sem escolher nada. Exemplo:</span>
+        <b>21 liquidações</b>
+        <table><tr><td>Paredes</td><td>400,00 €</td></tr><tr><td>Póvoa de Lanhoso</td><td>1.540,00 €</td></tr></table>
+        <button class="btn" onclick="toast('Liquidações gravadas ✓ (pré-visualização)')">Gravar liquidações</button></div>
+    </div>`;
+  wireDrop('dF','iF',handleFolha); wireDrop('dL','iL',handleLiq);
+}
+function wireDrop(d,i,h){const D=$(d),I=$(i);
+  D.addEventListener('dragover',e=>{e.preventDefault();D.classList.add('hot')});
+  D.addEventListener('dragleave',()=>D.classList.remove('hot'));
+  D.addEventListener('drop',e=>{e.preventDefault();D.classList.remove('hot');if(e.dataTransfer.files[0])h(e.dataTransfer.files[0])});
+  I.addEventListener('change',e=>{if(e.target.files[0])h(e.target.files[0])});
+}
+async function handleFolha(file){const p=$('pF');p.textContent='A ler…';
+  try{const f=parseFolha(await getRows(file));const ti=f.totais;
+    p.innerHTML=`<b>${f.clinica||'?'}</b> · ${f.data||''}<table>
+      <tr><td>Numerário</td><td>${fmt(ti.numerario||0)}</td></tr><tr><td>Multibanco</td><td>${fmt(ti.mb||0)}</td></tr>
+      <tr><td>Cheque</td><td>${fmt(ti.cheque||0)}</td></tr><tr class="tot"><td>Total</td><td>${fmt(ti.total||0)}</td></tr></table>
+      <button class="btn" onclick="toast('Folha gravada ✓ (pré-visualização)')">Gravar folha</button>`;
+  }catch(e){p.innerHTML='<span style="color:var(--danger)">'+e.message+'</span>';}
+}
+async function handleLiq(file){const p=$('pL');p.textContent='A ler…';
+  try{const ls=parseLiq(await getRows(file));const agg={};ls.forEach(l=>{agg[l.clinica]=(agg[l.clinica]||0)+l.valor;});
+    let t=`<b>${ls.length} liquidações</b><table>`;for(const c in agg)t+=`<tr><td>${c}</td><td>${fmt(agg[c])}</td></tr>`;t+=`</table>
+      <button class="btn" onclick="toast('Liquidações gravadas ✓ (pré-visualização)')">Gravar liquidações</button>`;
+    p.innerHTML=t;
+  }catch(e){p.innerHTML='<span style="color:var(--danger)">'+e.message+'</span>';}
+}
+
+function clinicOptions(){return clinics.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');}
+function renderLancar(){
+  $('viewLancar').innerHTML=`
+    <div class="card">
+      <h2>Depósito bancário</h2>
+      <div class="row"><div><label class="fld">Data</label><input class="fld-in" type="date" value="${todayISO()}"></div>
+        <div><label class="fld">Valor (€)</label><input class="fld-in" type="number" placeholder="0,00"></div></div>
+      <button class="btn" onclick="toast('Depósito registado ✓ (pré-visualização)')">Registar depósito</button>
+    </div>
+    <div class="card">
+      <h2>Recebimento avulso (ex.: transferência)</h2>
+      <label class="fld">Clínica</label><select class="fld-in">${clinicOptions()}</select>
+      <div class="row"><div><label class="fld">Data-valor</label><input class="fld-in" type="date" value="${todayISO()}"></div>
+        <div><label class="fld">Meio</label><select class="fld-in"><option>Transferência</option><option>Numerário</option><option>Multibanco</option></select></div></div>
+      <label class="fld">Valor (€)</label><input class="fld-in" type="number" placeholder="0,00">
+      <label class="fld">Descrição (opcional)</label><input class="fld-in" placeholder="ex.: TB fatura PL2026/430">
+      <button class="btn" onclick="toast('Recebimento registado ✓ (pré-visualização)')">Registar recebimento</button>
+    </div>`;
+}
+
+let rpTab='Geral';
+function renderRelatorios(){
+  $('viewRelatorios').innerHTML=`
+    <div class="card">
+      <div class="pills">
+        <button class="${rpTab==='Geral'?'on':''}" onclick="rpTab='Geral';renderRelatorios()">Geral</button>
+        <button class="${rpTab==='Externo'?'on':''}" onclick="rpTab='Externo';renderRelatorios()">Externo</button>
+        <button class="${rpTab==='CD'?'on':''}" onclick="rpTab='CD';renderRelatorios()">Cheques-dentista</button>
+      </div>
+      <div id="rpBody"></div>
+    </div>`;
+  const b=$('rpBody');
+  if(rpTab==='Geral'){
+    const first=new Date();first.setDate(1);
+    b.innerHTML=`<h2 style="margin-top:14px">Relatório por categoria</h2>
+      <label class="fld">Clínica</label><select class="fld-in"><option>Todas</option>${clinicOptions()}</select>
+      <div class="row"><div><label class="fld">De</label><input class="fld-in" type="date" value="${first.toISOString().slice(0,10)}"></div>
+        <div><label class="fld">Até</label><input class="fld-in" type="date" value="${todayISO()}"></div></div>
+      <button class="btn" onclick="toast('Relatório gerado (pré-visualização)')">Gerar</button>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ok);font-weight:600;margin:16px 0 0">Recebimento clínico (real)</div>
+      <table><tr><th>Meio</th><th>Recebido</th></tr>
+        <tr><td>Numerário</td><td>5.505,00 €</td></tr>
+        <tr><td>Multibanco</td><td>810,00 €</td></tr>
+        <tr><td>Transferência</td><td>1.200,00 €</td></tr>
+        <tr class="tot"><td>Subtotal real</td><td>7.515,00 €</td></tr></table>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);font-weight:600;margin:18px 0 0">Outras categorias · à parte do real</div>
+      <table><tr><th>Categoria</th><th>Faturado</th><th>Recebido</th><th>Pendente</th></tr>
+        <tr><td>Cheque-dentista</td><td>3.350,00 €</td><td>2.500,00 €</td><td>850,00 €</td></tr>
+        <tr><td>Externo (S. Frutuoso)</td><td>3.200,00 €</td><td>2.400,00 €</td><td>800,00 €</td></tr>
+        <tr><td>Venda de bens</td><td>1.500,00 €</td><td>1.500,00 €</td><td>0,00 €</td></tr></table>`;
+  } else if(rpTab==='Externo'){
+    b.innerHTML=`<h2 style="margin-top:14px">Serviços externos</h2>
+      <div class="clinic-sub">Prestação de serviços médico-dentários · Clínica S. Frutuoso, Braga · desde 01-01-2026</div>
+      <div class="chips">
+        <div class="chip plain"><div class="k">Faturado</div><div class="big">3.200,00 €</div></div>
+        <div class="chip warn"><div class="k">Por receber</div><div class="big">800,00 €</div><div class="note">faturado − recebido</div></div>
+      </div>
+      <table style="margin-top:14px"><tr><th>Documento</th><th>Faturado</th><th>Recebido</th><th>Estado</th></tr>
+        <tr><td>2026/1 · jan</td><td>900,00 €</td><td>900,00 €</td><td><span class="st ok">recebido</span></td></tr>
+        <tr><td>2026/2 · mar</td><td>1.100,00 €</td><td>1.100,00 €</td><td><span class="st ok">recebido</span></td></tr>
+        <tr><td>2026/3 · mai</td><td>1.200,00 €</td><td>400,00 €</td><td><span class="st pend">parcial</span></td></tr>
+        <tr class="tot"><td>Total</td><td>3.200,00 €</td><td>2.400,00 €</td><td></td></tr></table>
+      <button class="btn sec" onclick="toast('Abrir formulário (pré-visualização)')">+ Registar fatura externa</button>`;
+  } else {
+    b.innerHTML=`<h2 style="margin-top:14px">Cheques-dentista</h2>
+      <div class="clinic-sub">Pagos mais tarde pelo Estado por TB. Não entram na caixa até cair em conta.</div>
+      <table><tr><th>Clínica</th><th>Emitido</th><th>Recebido</th><th>Pendente</th></tr>
+        <tr><td>Paredes</td><td>1.250,00 €</td><td>900,00 €</td><td>350,00 €</td></tr>
+        <tr><td>Póvoa de Lanhoso</td><td>2.100,00 €</td><td>1.600,00 €</td><td>500,00 €</td></tr>
+        <tr class="tot"><td>Total</td><td>3.350,00 €</td><td>2.500,00 €</td><td>850,00 €</td></tr></table>
+      <button class="btn sec" onclick="toast('Abrir formulário (pré-visualização)')">+ Registar recebimento do Estado (TB)</button>`;
+  }
+}
+
+/* ---- MÉDICOS (mock, cálculo ao vivo) ---- */
+const medicos=[
+  {id:'joao',nome:'Dr. João Machado',clinica:'Póvoa de Lanhoso',orto:false,pg:0.75,po:null,
+   ex:{tf:8000,ex:600,ou:400}},
+  {id:'sofia',nome:'Dra. Sofia Dias',clinica:'Paredes',orto:true,pg:0.40,po:0.70,
+   ex:{tf:12000,fo:4000,lp:800,lo:1200,br:300,ex:500,sal:2000}}
+];
+let medSel='sofia';
+function mfld(l,id,val){return `<label class="fld">${l} (€)</label><input class="fld-in" type="number" step="0.01" id="${id}" value="${val||''}" oninput="computeMed()">`;}
+function calcMed(m,v){if(m.orto){const net=(+v.fo||0)-(+v.lo||0);return ((+v.tf||0)-net-(+v.lp||0)-(+v.br||0)-(+v.ex||0))*m.pg+net*m.po;}return ((+v.tf||0)-(+v.ex||0)-(+v.ou||0))*m.pg;}
+function getMV(){const g=id=>($(id)?$(id).value:'');return {tf:g('mf_tf'),fo:g('mf_fo'),lp:g('mf_lp'),lo:g('mf_lo'),br:g('mf_br'),ex:g('mf_ex'),ou:g('mf_ou'),sal:g('mf_sal')};}
+function computeMed(){const m=medicos.find(x=>x.id===medSel);const v=getMV();const p=calcMed(m,v);
+  $('medPagar').textContent=fmt(p);
+  const sp=$('medSplit');
+  if(sp){ if(m.orto){const sal=(+v.sal)||0;
+      sp.innerHTML=`<div class="chips"><div class="chip plain"><div class="k">Salário (conta pessoal)</div><div class="big">${fmt(sal)}</div></div><div class="chip plain"><div class="k">Conta empresa</div><div class="big">${fmt(p-sal)}</div><div class="note">a pagar − salário</div></div></div>`;
+    } else sp.innerHTML=''; }
+}
+function renderMedicos(){
+  const m=medicos.find(x=>x.id===medSel),e=m.ex;
+  const pills=medicos.map(x=>`<button class="${x.id===medSel?'on':''}" onclick="medSel='${x.id}';renderMedicos()">${x.nome.replace(/^Dra?\.\s*/,'')}</button>`).join('');
+  const fields=m.orto
+    ? mfld('Total faturado','mf_tf',e.tf)+mfld('Faturado em Ortodontia','mf_fo',e.fo)+mfld('Desp. Lab. Prótese','mf_lp',e.lp)+mfld('Desp. Lab. Ortodontia','mf_lo',e.lo)+mfld('Desp. Branqueamentos','mf_br',e.br)+mfld('Exames realizados','mf_ex',e.ex)+mfld('Salário (conta pessoal)','mf_sal',e.sal)
+    : mfld('Total faturado','mf_tf',e.tf)+mfld('Exames realizados','mf_ex',e.ex)+mfld('Outros','mf_ou',e.ou);
+  const note=m.orto?`(TF − líq.orto − lab.prót − branq − exames)×0,40 + líq.orto×0,70`:`(TF − exames − outros)×0,75`;
+  $('viewMedicos').innerHTML=`<div class="card">
+    <div class="pills">${pills}</div>
+    <div class="clinic-sub" style="margin-top:10px">${m.nome} · ${m.clinica}</div>
+    <label class="fld">Mês</label><input class="fld-in" type="month" value="${new Date().toISOString().slice(0,7)}">
+    <label class="drop" style="padding:12px;margin-top:10px"><input type="file" accept="application/pdf" onchange="importListagem(this)">Carregar <strong>listagem de tratamentos</strong> (PDF)</label>
+    <div class="preview" id="medImpInfo" style="margin-bottom:4px"></div>
+    <div id="medProtList"></div>
+    ${fields}
+    <div class="chips" style="margin-top:14px"><div class="chip cash"><div class="k">A pagar</div><div class="big" id="medPagar">—</div><div class="note">${note}</div></div></div>
+    <div id="medSplit"></div>
+    <button class="btn" onclick="toast('Mês gravado ✓ (pré-visualização)')">Gravar mês</button></div>`;
+  computeMed();
+}
+
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+async function getRows(file){
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;const rows=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const tc=await (await pdf.getPage(p)).getTextContent();
+    const items=tc.items.map(it=>({x:it.transform[4],y:it.transform[5],s:it.str})).filter(it=>it.s.trim()!=='');
+    const b=[];for(const it of items){let g=b.find(k=>Math.abs(k.y-it.y)<=3);if(!g){g={y:it.y,items:[]};b.push(g);}g.items.push(it);}
+    b.sort((a,b)=>b.y-a.y);for(const g of b){g.items.sort((a,b)=>a.x-b.x);rows.push({text:g.items.map(i=>i.s).join(' ').replace(/\s+/g,' ').trim()});}
+  }return rows;
+}
+function parseListagem(rows){
+  let texto=rows.map(r=>r.text).join('\n').replace(/Total:[\s\S]*/,'');
+  const blocos=texto.split(/Dra Ana Sofia/);
+  const RE=/\d{1,3}(?:\.\d{3})*,\d{2}/g;
+  const v=s=>parseFloat(s.replace(/\./g,'').replace(',','.'));
+  const seen=new Set();const prot=[];let tot=0,orto=0,exames=0,br=0,pr=0,prfl=0,nrec=0;
+  for(const b of blocos){
+    const ms=b.match(RE); if(!ms) continue;
+    const bb=b.replace(/\s+/g,' ').trim(); if(seen.has(bb)) continue; seen.add(bb);
+    const x=v(ms[0]); tot+=x; nrec++;
+    if(/IMAG|C\.04/.test(b)) exames+=x;
+    else if(/ORTO/.test(b)) orto+=x;
+    else if(/BR\.\d|branqueament/i.test(b)) br+=x;
+    else if(/PRFL/.test(b)) prfl+=x;
+    else if(/P\.R\./.test(b)) pr+=x;
+    if(/P\.R\.|PRFL/.test(bb)){
+      const d=bb.match(/(\d{2}-\d{2}-\d{4})/); const cod=bb.match(/(P\.R\.\d+|PRFL\S*)/);
+      const mp=bb.match(/\d{2}-\d{2}-\d{4}\s+(.+?)\s+(?:P\.R\.|PRFL)/);
+      const pac=mp?mp[1].replace(/\s+\d{1,2}(\s*,\s*\d{1,2})*$/,'').trim():'';
+      const md=bb.match(/((?:P\.R\.\d+|PRFL\S*).*?)\s+\d{1,3}(?:\.\d{3})*,\d{2}/);
+      const desc=md?md[1].replace(/\s+/g,' ').trim():(cod?cod[1]:'');
+      prot.push({data:d?d[1]:'',pac,cod:cod?cod[1]:'P.R.',desc,v:x});
+    }
+  }
+  return {tot,orto,exames,br,pr,prfl,nrec,prot};
+}
+function renderProt(prot){
+  const el=document.getElementById('medProtList'); if(!el) return;
+  if(!prot||!prot.length){el.innerHTML='';return;}
+  prot.sort((a,b)=>a.pac.localeCompare(b.pac)||a.data.localeCompare(b.data));
+  let tot=0,h='<div class="sechead" style="color:var(--muted)">Pacientes com prótese — cruzar com a fatura do laboratório</div><table><tr><th>Paciente</th><th>Data</th><th>Tratamento</th><th>Valor</th></tr>';
+  prot.forEach(p=>{tot+=p.v;h+=`<tr><td>${p.pac}</td><td>${p.data.slice(0,5)}</td><td style="font-family:var(--ui);text-align:left">${p.desc||p.cod}</td><td>${fmt(p.v)}</td></tr>`;});
+  h+=`<tr class="tot"><td>${new Set(prot.map(p=>p.pac)).size} pacientes</td><td></td><td></td><td>${fmt(tot)}</td></tr></table>`;
+  el.innerHTML=h;
+}
+async function importListagem(input){
+  const file=input.files[0]; if(!file) return; const m=medicos.find(x=>x.id===medSel);
+  const t=document.getElementById('medImpInfo'); t.textContent='A ler listagem…';
+  try{
+    const d=parseListagem(await getRows(file));
+    if($('mf_tf')) $('mf_tf').value=d.tot.toFixed(2);
+    if($('mf_ex')) $('mf_ex').value=d.exames.toFixed(2);
+    if(m.orto && $('mf_fo')) $('mf_fo').value=d.orto.toFixed(2);
+    let info=`${d.nrec} tratamentos · Total ${fmt(d.tot)} · Ortodontia ${fmt(d.orto)} · Exames ${fmt(d.exames)}`;
+    if(m.orto) info+=`\nAjuda p/ custos: branqueamento ${fmt(d.br)} · prótese ${fmt(d.pr)}`+(d.prfl?` · flexível ${fmt(d.prfl)}`:'');
+    t.style.whiteSpace='pre-line'; t.textContent=info; renderProt(d.prot); computeMed();
+  }catch(e){ t.textContent='Erro a ler: '+e.message; }
+}
+
+renderMedicos();
+</script>
+</body>
+</html>
